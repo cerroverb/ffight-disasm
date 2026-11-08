@@ -4,7 +4,7 @@
 -- RAM dump: +0x00 active, +0x06 X, +0x0A depth.
 -- Walks to the nearest enemy, attacks when lined up, otherwise walks right.
 -- Keeps inserting coins and pressing start so it continues forever.
--- env: BOT_CHAR (0..2 Right presses on character select), BOT_SNAP (s), BOT_SEED
+-- env: BOT_CHAR (0 Guy, 1 Cody, 2 Haggar), BOT_SNAP (s), BOT_SEED
 local p = manager.machine.ioport.ports
 local function F(port, name) return p[port].fields[name] end
 local coin, start = F(":IN0", "Coin 1"), F(":IN0", "1 Player Start")
@@ -31,10 +31,15 @@ sub = emu.add_machine_frame_notifier(function()
 
   local c = f % 300
   if c < 4 then set(coin) end
-  if c >= 30 and c < 34 then set(start) end
-  if f > 400 and f < 400 + char * 20 and (f % 20) < 5 then set(R) end
+  -- character select: FF1514 is 1 only on that screen, FF1525 is the cursor (0 Guy, 2 Cody, 4 Haggar);
+  -- Right is tapped (held input does not repeat) until the cursor sits on the wanted character,
+  -- the periodic Start press then confirms it. No other button is pressed there, a button confirms.
+  local selecting = mem:read_u8(0xFF1514) == 1
+  local cursor_short = selecting and mem:read_u8(0xFF1525) < char * 2
+  if c >= 30 and c < 34 and not cursor_short then set(start) end
+  if cursor_short and f % 8 < 2 then set(R) end
 
-  if f > 600 then
+  if f > 600 and not selecting then
     local pl = obj(0xFF8568)
     local best, bd
     local function consider(a)
