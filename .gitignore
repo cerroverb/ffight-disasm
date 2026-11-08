@@ -1,0 +1,9 @@
+# ROM data and anything derived from it must never be committed
+rom/
+build/
+*.bin
+*.zip
+
+# generated from the ROM: contains Capcom code, private repo only
+src/
+__pycache__/
