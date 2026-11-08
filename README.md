@@ -4,7 +4,7 @@ This repository contains no ROM data and no Capcom code. The disassembly source 
 
 Status
 - the generated source rebuilds all five 68000 program ROM chips byte-identically (checked by SHA-1)
-- code is found by recursive descent from the vector table and from MAME execution traces (attract mode and bot gameplay runs in `traces/`)
+- code is found by recursive descent from the vector table, from MAME execution traces (attract mode and bot gameplay runs in `traces/`), from `tools/entry_points.txt` and through jump tables of the form `move.w (T,pc,d0.w),d0; jmp (T,pc,d0.w)` (a table ends at its lowest target or at the next referenced address)
 - Z80 sound program, names and comments are not started
 
 Requirements: m68k cross binutils, MAME, Python 3, make and gcc. On Ubuntu 24.04:

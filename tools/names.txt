@@ -57,3 +57,11 @@
 05E760 post_msg_obj_ram
 05E76E post_msg_obj_ram_ng
 05E77A post_msg_obj_ram_ok
+000402 game_init                 # clears work RAM, resets the sound queue and the two other queues
+0009F8 sound_queue_put           # d0 = command, into the ring at (0x184,a5), write index (0x1a,a5)
+000E42 dsw_c_update              # DSWC bit 4 flip screen -> (0x83,a5), bit 5 demo sounds -> (0x88,a5)
+000F72 coin_update               # coin edges, service credit, both coin slot state machines
+000F8C coin_edge_detect          # bit histories of DSW_SYSTEM coin inputs
+000FCE service_credit            # DSW_SYSTEM bit 2 (service) adds a credit, up to 9 in (0x4c,a5)
+000FF4 coin_slot_update          # a0 = slot struct, state byte +5 indexes the jump table dat_001004
+05E982 post_rom_test             # not reached, see tools/entry_points.txt

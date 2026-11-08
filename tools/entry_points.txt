@@ -1,0 +1,2 @@
+# Extra code entry points (hex), one per line
+05E982  # ROM checksum part of the self test, never reached: post_msg_obj_ram_ok is followed by jmp loc_000402

@@ -50,31 +50,86 @@ if os.path.isdir(tr_dir):
 owner = [None] * SIZE         # address of instruction covering each byte
 ins_at = {}
 bad_paths = []
-work = sorted(entries)
+jump_tables = {}              # table address -> number of entries
+
+
+def jump_table_targets(table, referenced):
+    """Word offsets relative to the table, as in `move.w (T,pc,d0.w),d0; jmp (T,pc,d0.w)`.
+    The table ends where its first (lowest) target begins, or at the next address
+    referenced by any known instruction (a following data table)."""
+    targets = []
+    end = min([SIZE] + [r for r in referenced if r > table])
+    a = table
+    while a + 1 < end and len(targets) < 256:
+        w = int.from_bytes(rom[a:a + 2], "big")
+        t = table + (w - 0x10000 if w & 0x8000 else w)
+        if t & 1 or t <= table or t >= SIZE:
+            break
+        targets.append(t)
+        end = min(end, t)
+        a += 2
+    jump_tables[table] = targets
+    return targets
+
+
+JT_INDEX = re.compile(r"(jmp|jsr)\t\(PCREL_([0-9A-F]{6}),pc,(d[0-7])\.w\)$")
+JT_LOAD = re.compile(r"move\.w\t\(PCREL_([0-9A-F]{6}),pc,(d[0-7])\.w\),(d[0-7])$")
+
 seen = set()
-while work:
-    a = work.pop()
-    while True:
-        if a in seen or a >= SIZE or a & 1:
-            break
-        if owner[a] is not None:
-            if owner[a] != a:
+
+
+def discover(work):
+    """Recursive descent from the given addresses."""
+    while work:
+        a = work.pop()
+        while True:
+            if a in seen or a >= SIZE or a & 1:
+                break
+            if owner[a] is not None:
+                if owner[a] != a:
+                    bad_paths.append(a)
+                break
+            ins = decode(rom, a)
+            if ins is None or any(owner[b] is not None for b in range(a, a + ins.length)):
                 bad_paths.append(a)
-            break
-        ins = decode(rom, a)
-        if ins is None or any(owner[b] is not None for b in range(a, a + ins.length)):
-            bad_paths.append(a)
-            break
-        seen.add(a)
-        ins_at[a] = ins
-        for b in range(a, a + ins.length):
-            owner[b] = a
-        for t in ins.targets:
-            if t < SIZE and not t & 1:
-                work.append(t)
-        if ins.flow in ("stop", "jump"):
-            break
-        a += ins.length
+                break
+            seen.add(a)
+            ins_at[a] = ins
+            for b in range(a, a + ins.length):
+                owner[b] = a
+            for t in ins.targets:
+                if t < SIZE and not t & 1:
+                    work.append(t)
+            if ins.flow in ("stop", "jump"):
+                break
+            a += ins.length
+
+
+def new_jump_tables():
+    """Targets of jump tables not followed yet: a jmp/jsr through (T,pc,dN.w) whose
+    preceding instruction loaded dN from the same table."""
+    found = []
+    referenced = {addr for ins in ins_at.values() for kind, addr in ins.refs if addr < SIZE}
+    referenced |= {t for ins in ins_at.values() for t in ins.targets}
+    for a, ins in sorted(ins_at.items()):
+        m = JT_INDEX.match(ins.text)
+        if not m or int(m.group(2), 16) in jump_tables:
+            continue
+        prev = ins_at.get(owner[a - 2]) if a >= 2 and owner[a - 2] is not None else None
+        pm = JT_LOAD.match(prev.text) if prev else None
+        if pm and pm.group(1) == m.group(2) and pm.group(2) == pm.group(3) == m.group(3):
+            targets = jump_table_targets(int(m.group(2), 16), referenced)
+            referenced |= set(targets)
+            found += targets
+    return found
+
+
+discover(sorted(entries))
+while True:
+    targets = new_jump_tables()
+    if not targets:
+        break
+    discover(targets)
 
 # ---------------------------------------------------------------- labels
 labels = {}
@@ -100,8 +155,8 @@ hardware.update(read_table("ram.txt"))
 
 
 def want_label(addr):
-    if addr >= SIZE or addr < 0:
-        return None
+    if addr >= SIZE or addr < 0x400:
+        return None     # outside the image, or inside the vector table (emitted as .long)
     if owner[addr] is not None and owner[addr] != addr:
         return None     # middle of an instruction: cannot place a label
     if addr not in labels:
@@ -243,5 +298,11 @@ open(OUT, "w").write(emit(check=False))
 
 code_bytes = sum(i.length for i in ins_at.values())
 print(f"instructions: {len(ins_at)}  code bytes: {code_bytes} ({100 * code_bytes / SIZE:.1f}% of 1 MiB)")
-print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}")
+print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}  jump tables: {len(jump_tables)}")
 print(f"paths stopped at invalid/overlapping code: {len(bad_paths)}  unlabelable refs: {len(absolute_refs)}")
+with open(os.path.join(ROOT, "build", "jump_tables.txt"), "w") as f:
+    for t, targets in sorted(jump_tables.items()):
+        f.write(f"{t:06x} {len(targets)} entries: " + " ".join(f"{x:06x}" for x in targets) + "\n")
+with open(os.path.join(ROOT, "build", "bad_paths.txt"), "w") as f:
+    for a in sorted(set(bad_paths)):
+        f.write(f"{a:06x}\n")
