@@ -50,7 +50,25 @@ if os.path.isdir(tr_dir):
 owner = [None] * SIZE         # address of instruction covering each byte
 ins_at = {}
 bad_paths = []
-jump_tables = {}              # table address -> number of entries
+jump_tables = {}              # table address -> targets
+seen = set()
+
+
+def plausible_code(t):
+    """True when t starts known code, or decodes as a few instructions in a row."""
+    a = t
+    for _ in range(4):
+        if a >= SIZE or a & 1:
+            return False
+        if owner[a] is not None:
+            return owner[a] == a
+        ins = decode(rom, a)
+        if ins is None:
+            return False
+        if ins.flow in ("stop", "jump"):
+            return True
+        a += ins.length
+    return True
 
 
 def jump_table_targets(table, referenced):
@@ -63,7 +81,7 @@ def jump_table_targets(table, referenced):
     while a + 1 < end and len(targets) < 256:
         w = int.from_bytes(rom[a:a + 2], "big")
         t = table + (w - 0x10000 if w & 0x8000 else w)
-        if t & 1 or t <= table or t >= SIZE:
+        if t & 1 or t <= table or t >= SIZE or not plausible_code(t):
             break
         targets.append(t)
         end = min(end, t)
@@ -105,31 +123,49 @@ def discover(work):
             a += ins.length
 
 
-def new_jump_tables():
+def new_jump_tables(bounds):
     """Targets of jump tables not followed yet: a jmp/jsr through (T,pc,dN.w) whose
-    preceding instruction loaded dN from the same table."""
+    preceding instruction loaded dN from the same table (with any index register)."""
     found = []
     referenced = {addr for ins in ins_at.values() for kind, addr in ins.refs if addr < SIZE}
-    referenced |= {t for ins in ins_at.values() for t in ins.targets}
+    referenced |= {t for ins in ins_at.values() for t in ins.targets} | bounds
     for a, ins in sorted(ins_at.items()):
         m = JT_INDEX.match(ins.text)
         if not m or int(m.group(2), 16) in jump_tables:
             continue
         prev = ins_at.get(owner[a - 2]) if a >= 2 and owner[a - 2] is not None else None
         pm = JT_LOAD.match(prev.text) if prev else None
-        if pm and pm.group(1) == m.group(2) and pm.group(2) == pm.group(3) == m.group(3):
+        if pm and pm.group(1) == m.group(2) and pm.group(3) == m.group(3):
             targets = jump_table_targets(int(m.group(2), 16), referenced)
             referenced |= set(targets)
             found += targets
     return found
 
 
-discover(sorted(entries))
-while True:
-    targets = new_jump_tables()
-    if not targets:
+def discover_all(bounds):
+    """Full discovery from scratch. bounds: addresses known to be referenced from an
+    earlier pass, so that a jump table processed before the code after it is found
+    does not read into that code."""
+    owner[:] = [None] * SIZE
+    ins_at.clear(); bad_paths.clear(); jump_tables.clear(); seen.clear()
+    discover(sorted(entries))
+    while True:
+        targets = new_jump_tables(bounds)
+        if not targets:
+            break
+        discover(targets)
+    refs = {addr for ins in ins_at.values() for kind, addr in ins.refs if addr < SIZE}
+    refs |= {t for ins in ins_at.values() for t in ins.targets}
+    refs |= {t for targets in jump_tables.values() for t in targets}
+    return refs
+
+
+bounds = set()
+for _ in range(10):
+    refs = discover_all(bounds)
+    if refs <= bounds:
         break
-    discover(targets)
+    bounds |= refs
 
 # ---------------------------------------------------------------- labels
 labels = {}
@@ -167,6 +203,10 @@ def want_label(addr):
 for i, v in vectors.items():
     if i >= 1 and v in ins_at:
         want_label(v)
+for table, targets in jump_tables.items():
+    want_label(table)
+    for t in targets:
+        want_label(t)
 
 absolute_refs = []   # placeholders that could not become labels
 
@@ -223,6 +263,13 @@ def emit(check):
         if a in labels and not (a in ins_at):
             flush()
             out.append(f"{labels[a]}:")
+        if a in jump_tables and a in labels:
+            flush()
+            out.append(f"{labels[a]}:")
+            for t in jump_tables[a]:
+                out.append(f"\t.short\t{labels[t]}-{labels[a]}")
+            a += 2 * len(jump_tables[a])
+            continue
         if a in ins_at:
             flush()
             ins = ins_at[a]

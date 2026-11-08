@@ -65,3 +65,17 @@
 000FCE service_credit            # DSW_SYSTEM bit 2 (service) adds a credit, up to 9 in (0x4c,a5)
 000FF4 coin_slot_update          # a0 = slot struct, state byte +5 indexes the jump table dat_001004
 05E982 post_rom_test             # not reached, see tools/entry_points.txt
+
+# Task system: 16 slots of 16 bytes at (-0x7000,a5) = 0xffff1000 (+0 state, +1 frame counter,
+# +4 routine); the vblank handler counts the waiting slots down
+000826 task_start                # trap 0: d0 = slot, a0 = routine
+000850 task_stop                 # trap 1
+000860 task_stop2                # trap 2: clears the slot state
+00087E task_wait_frames          # trap 3: d0 = frames to wait
+00084E task_slot_busy_hang
+00086C trap2_handler
+00088A trap3_handler
+003BEC rng_next                  # 16-bit generator in (-0x6eb0,a5), seeded with 0x2472
+003AE2 obj_anim_start            # a6 = object, a1 = animation script: pointer +0x20, frame counter +0x28
+003B02 obj_anim_step             # next script entry when the frame counter runs out, negative entry loops
+00390C list_pop_a4               # pops a word from the list at (0x4f7c,a5), count (0x4f7a,a5); d0 = 1 when empty
