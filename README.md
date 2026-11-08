@@ -39,6 +39,8 @@ Gameplay traces come from `bot/bot.lua`, a MAME Lua bot that walks to the neares
 Files:
 - `tools/dis68k.py` 68000 decoder emitting GNU as Motorola syntax with explicit sizes
 - `tools/gen.py` source generator (recursive descent, labels, round-trip check)
+- `tools/names.txt` label names (exception vectors, interrupt handlers), applied by the generator
+- `tools/hardware.txt` CPS1 hardware addresses, emitted as `.equ` and used for absolute operands; from MAME `cps1.cpp`, `cps1.h` and `cps1_v.cpp`
 - `tools/combine_rom.py` builds the 1 MiB 68000 image from the MAME set
 - `tools/collect_pcs.c`, `tools/collect_pcs.py` reduce a MAME trace to the set of executed PCs
 - `traces/` executed-PC lists from MAME runs (addresses only)

@@ -1,0 +1,17 @@
+# Label names: ADDRESS NAME. Applied by tools/gen.py to code and data labels.
+# Exception vector assignments are the 68000 vector table at ROM offset 0.
+05E7AC reset_entry        # vector 1, initial PC
+0718DC exc_bus_error      # vector 2
+0718E6 exc_address_error  # vector 3
+0718F0 exc_illegal        # vector 4
+0718FA exc_zero_divide    # vector 5
+071904 exc_chk            # vector 6
+07190E exc_trapv          # vector 7
+071918 exc_privilege      # vector 8
+071922 exc_trace          # vector 9
+07192C exc_line_a         # vector 10
+071936 exc_line_f         # vector 11
+000400 irq_unused         # vectors 24,25,27-31: rte only
+00053E irq2_vblank        # vector 26, level 2 autovector (CPS1 vblank interrupt, MAME cps1.cpp cps1_interrupt)
+000832 trap0_handler      # vector 32
+000852 trap1_handler      # vector 33
