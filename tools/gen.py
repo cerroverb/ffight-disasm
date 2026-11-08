@@ -216,6 +216,7 @@ os.makedirs(os.path.dirname(fb_path), exist_ok=True)
 with open(fb_path, "w") as f:
     for a in sorted(fallback):
         f.write(f"{a:06x}\t{texts[a]}\n")
+os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
 open(OUT, "w").write(emit(check=False))
 
 code_bytes = sum(i.length for i in ins_at.values())
