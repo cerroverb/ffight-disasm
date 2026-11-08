@@ -96,6 +96,7 @@ for addr, name in read_table("names.txt").items():
     if addr < SIZE and owner[addr] in (None, addr):
         labels[addr] = name
 hardware = read_table("hardware.txt")   # absolute addresses outside the ROM, emitted as .equ
+hardware.update(read_table("ram.txt"))
 
 
 def want_label(addr):

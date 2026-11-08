@@ -32,3 +32,7 @@
 800180 SOUND_COMMAND          # cps1_soundlatch_w
 800188 SOUND_FADE             # cps1_soundlatch2_w
 900000 GFXRAM
+80001a DSWA                   # cps1_dsw_r offsets 1..3 are the dip switch banks
+80001c DSWB
+80001e DSWC
+800031 COIN_CONTROL_LOW       # low byte of COIN_CONTROL

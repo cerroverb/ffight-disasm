@@ -15,3 +15,45 @@
 00053E irq2_vblank        # vector 26, level 2 autovector (CPS1 vblank interrupt, MAME cps1.cpp cps1_interrupt)
 000832 trap0_handler      # vector 32
 000852 trap1_handler      # vector 33
+
+# Routines, named from what they do (see the hardware symbols they use)
+0005E8 vblank_write_video_regs   # scroll, stars, rowscroll, video control, coin control from RAM copies
+0006EE read_system_inputs        # DSW_SYSTEM and the three dip switch banks, inverted, into RAM
+000984 sound_send_queued         # sends the next queued sound command; 0xf9 prefix carries a fade value
+0009C4 sound_send_ff             # command 0xff
+0021F6 video_set_scroll_bases    # scroll 1/2/3 base registers
+002B24 read_player_inputs        # IN1 inverted: low byte P1 (0x5c,a5), high byte P2 (0x5e,a5)
+002B52 read_player_inputs_game   # same read, then per player edge handling
+002D3A read_p1_inputs_record     # P1 read with run length recording into a list (demo input)
+
+# Power-on self test (reset path), messages written to the scroll 1 tilemap
+05E7B6 post_start
+05E840 post_check_cpsb_id        # CPS-B ID register must read 4 (CPS_B_04)
+05E850 post_hang                 # wrong CPS-B revision: loop forever
+05EA62 post_ram_test             # writes the patterns at dat_05EA94 through a0..a1 and reads them back
+05EA9C post_print_message        # a2: column, row, attribute, then a zero terminated string
+05EAE8 post_clear_color_ram      # 0x914000-0x9157ff
+05EB00 post_fill_scroll1
+05EB16 post_fill_scroll2
+05EB2C post_fill_scroll3
+05EB3E post_fill_loop
+05EB48 post_clear_obj_ram        # 0x900000, 2 KiB
+05EB60 post_set_palette          # copies the 32 bytes at dat_05EB8E over the palette, then palette control
+05E6A2 post_msg_color_ram
+05E6B0 post_msg_color_ram_ng
+05E6BC post_msg_color_ram_ok
+05E6C8 post_msg_work_ram
+05E6D6 post_msg_work_ram_ng
+05E6E2 post_msg_work_ram_ok
+05E6EE post_msg_scroll1
+05E6FC post_msg_scroll1_ng
+05E708 post_msg_scroll1_ok
+05E714 post_msg_scroll2
+05E722 post_msg_scroll2_ng
+05E72E post_msg_scroll2_ok
+05E73A post_msg_scroll3
+05E748 post_msg_scroll3_ng
+05E754 post_msg_scroll3_ok
+05E760 post_msg_obj_ram
+05E76E post_msg_obj_ram_ng
+05E77A post_msg_obj_ram_ok

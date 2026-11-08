@@ -1,0 +1,7 @@
+# Work RAM variables (0xff0000-0xffffff): ADDRESS NAME. Used for absolute long operands only.
+# Most RAM access goes through a5 = 0xffff8000 with a 16-bit displacement and is not renamed.
+ff167e ram_exception_code      # set by the exception vector handlers (0xff bus error ... 0x500 trapv)
+ff1514 ram_select_screen       # 1 while the character select screen is up (found by RAM diff, bot/dump_select.lua)
+ff1525 ram_select_cursor       # 0 Guy, 2 Cody, 4 Haggar
+ff8568 ram_player1_obj         # 0xc0 byte object slots: players and enemies (mame-rr beatemup-hitboxes.lua)
+ff9528 ram_boss_obj
