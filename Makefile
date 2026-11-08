@@ -1,7 +1,9 @@
 # Build and verify. The build reads only src/; the ROM is used by tools/gen.py and the verifier never needs it.
-AS      = m68k-linux-gnu-as -m68000 --register-prefix-optional
-LD      = m68k-linux-gnu-ld
-OBJCOPY = m68k-linux-gnu-objcopy
+CROSS  ?= m68k-linux-gnu-
+export CROSS
+AS      = $(CROSS)as -m68000 --register-prefix-optional
+LD      = $(CROSS)ld
+OBJCOPY = $(CROSS)objcopy
 
 all: verify
 

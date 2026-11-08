@@ -49,12 +49,13 @@ raw = sorted(p for p in pcs if kind_at.get(p) == "start-raw")
 
 # Raw-word lines only count as instructions if an independent disassembler (objdump)
 # decodes their bytes as exactly one instruction of the same length.
-import subprocess
+import os, subprocess
+CROSS = os.environ.get("CROSS", "m68k-linux-gnu-")
 binfile = sys.argv[1].replace(".lst", ".bin")
 fake_raw = []
 for p in raw:
     n = raw_len[p]
-    out = subprocess.run(["m68k-linux-gnu-objdump", "-D", "-b", "binary", "-m", "m68k:68000",
+    out = subprocess.run([CROSS + "objdump", "-D", "-b", "binary", "-m", "m68k:68000",
                           f"--start-address={p}", f"--stop-address={p + n}", binfile],
                          capture_output=True, text=True).stdout
     insns = [l for l in out.splitlines() if re.match(r"^\s+[0-9a-f]+:\t", l)]

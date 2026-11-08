@@ -13,7 +13,8 @@ import os, re, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dis68k import decode
 
-AS = ["m68k-linux-gnu-as", "-m68000", "--register-prefix-optional"]
+CROSS = os.environ.get("CROSS", "m68k-linux-gnu-")
+AS = [CROSS + "as", "-m68000", "--register-prefix-optional"]
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 rom = open(sys.argv[1], "rb").read()
@@ -176,8 +177,8 @@ def assemble(src_text, tmpdir):
 def section_bytes(o, tmpdir):
     b = os.path.join(tmpdir, "x.bin")
     ld = os.path.join(tmpdir, "x.elf")
-    subprocess.run(["m68k-linux-gnu-ld", "-n", "-Ttext=0", "-e", "0", "-o", ld, o], check=True)
-    subprocess.run(["m68k-linux-gnu-objcopy", "-O", "binary", "-j", ".text", ld, b], check=True)
+    subprocess.run([CROSS + "ld", "-n", "-Ttext=0", "-e", "0", "-o", ld, o], check=True)
+    subprocess.run([CROSS + "objcopy", "-O", "binary", "-j", ".text", ld, b], check=True)
     return open(b, "rb").read()
 
 

@@ -7,3 +7,4 @@ build/
 # generated from the ROM: contains Capcom code, private repo only
 src/
 __pycache__/
+handoff/
