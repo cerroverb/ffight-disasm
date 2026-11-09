@@ -24,9 +24,9 @@ BASE = 0xFF0000
 
 
 def parse_range(text):
-    low, _, high = text.partition("-")
-    low = int(low, 16) & 0xFFFF
-    high = int(high or low, 16) & 0xFFFF
+    first, _, last = text.partition("-")
+    low = int(first, 16) & 0xFFFF
+    high = int(last or first, 16) & 0xFFFF
     if high < low:
         raise argparse.ArgumentTypeError("bad range " + text)
     return low, high
@@ -104,9 +104,28 @@ def name_of(address, names):
     for start in names:
         if start <= address and (best is None or start > best):
             best = start
-    if best is None or address - best > 0xFF:
+    if best is None or address - best > 3:
         return ""
     return names[best] + (f"+{address - best:X}" if address != best else "")
+
+
+def diff_count(a, b):
+    """Bytes that differ between two frames."""
+    x = int.from_bytes(a, "big") ^ int.from_bytes(b, "big")
+    return FRAME - x.to_bytes(FRAME, "big").count(0)
+
+
+def nearest(ref_path, other_path, i, offset, window, other_frames, excludes):
+    """The other run's frame within window of i - offset that differs from reference frame i in the fewest bytes."""
+    r = masked(read_frame(ref_path, i), excludes)
+    best = (None, FRAME + 1)
+    with open(other_path, "rb") as f:
+        for j in range(max(0, i - offset - window), min(other_frames, i - offset + window + 1)):
+            f.seek(j * FRAME)
+            count = diff_count(r, masked(f.read(FRAME), excludes))
+            if count < best[1] or (count == best[1] and abs(j - (i - offset)) < abs(best[0] - (i - offset))):
+                best = (j, count)
+    return best
 
 
 def track(ref, other, window, first_window):
@@ -121,8 +140,8 @@ def track(ref, other, window, first_window):
         if last is None:
             low, high, expected = max(0, i - first_window), i + first_window, i
         else:
-            low, high = last[1], last[1] + window
             expected = last[1] + (i - last[0])  # same offset as the previous pair
+            low, high = max(last[1], expected - window), expected + window
         found = None
         k = bisect.bisect_left(js, low)
         while k < len(js) and js[k] <= high:
@@ -140,19 +159,23 @@ def main():
     ap.add_argument("reference")
     ap.add_argument("other")
     ap.add_argument("--exclude", action="append", type=parse_range, default=None,
-                    help="work RAM range left out, hex offsets or addresses (default 7C00-7FFF, the stack)")
-    ap.add_argument("--window", type=int, default=30, help="most frames between one pair and the next (30)")
+                    help="work RAM range left out, hex offsets or addresses (default: 7C00-7FFF, the stack, "
+                         "and 0118, the state byte of task 6, which flips between running and ready within a frame)")
+    ap.add_argument("--window", type=int, default=30,
+                    help="most frames a pair may be from the offset of the previous pair (30)")
     ap.add_argument("--first-window", type=int, default=120, help="most offset allowed for the first pair (120)")
     ap.add_argument("--lasting", type=int, default=30,
                     help="unpaired reference frames in a row that count as a lasting divergence (30)")
     ap.add_argument("--names", help="header with work RAM names (cps2recomp games/avsp/src/avsp.h)")
     ap.add_argument("--max-diffs", type=int, default=40, help="differing bytes listed (40)")
     ap.add_argument("--offset-only", action="store_true",
-                    help="print only the most common offset (reference index minus other index) and exit")
-    ap.add_argument("--before", type=int, default=None, help="with --offset-only: use pairs before this frame")
+                    help="print only the offset (reference index minus other index) of the last pair and exit")
+    ap.add_argument("--before", type=int, default=None, help="with --offset-only: the last pair before this frame")
+    ap.add_argument("--after", type=int, default=300,
+                    help="after a lasting divergence, frames looked at for the nearest frame of the other run (300)")
     ap.add_argument("--json", help="also write the summary as JSON")
     a = ap.parse_args()
-    excludes = a.exclude if a.exclude is not None else [(0x7C00, 0x7FFF)]
+    excludes = a.exclude if a.exclude is not None else [(0x7C00, 0x7FFF), (0x0118, 0x0118)]
 
     for p in (a.reference, a.other):
         if not os.path.exists(p) or frame_count(p) == 0:
@@ -163,9 +186,11 @@ def main():
     other = hashes(a.other, excludes)
     pairs = track(ref, other, a.window, a.first_window)
 
-    offsets = Counter(i - j for i, j in enumerate(pairs) if j is not None and (a.before is None or i < a.before))
+    offsets = Counter(i - j for i, j in enumerate(pairs) if j is not None)
     if a.offset_only:
-        print(offsets.most_common(1)[0][0] if offsets else 0)
+        # (the offset grows during the boot tests when the two runs' speeds differ: the last one is the one input meets)
+        last = [i - j for i, j in enumerate(pairs) if j is not None and (a.before is None or i < a.before)]
+        print(last[-1] if last else 0)
         return 0
 
     matched = sum(1 for j in pairs if j is not None)
@@ -202,11 +227,12 @@ def main():
 
     detail = None
     if divergence is not None or first_pair is None:
-        # the frame to look at, and the other run's frame expected there from the last pair
+        # the frame to look at, and the other run's frame nearest to it (fewest differing bytes) around the offset
+        # of the last pair
         i = divergence if divergence is not None else 0
         last = next(((k, pairs[k]) for k in range(i - 1, -1, -1) if pairs[k] is not None), None)
-        j = (last[1] + (i - last[0])) if last else i
-        j = min(j, len(other) - 1)
+        offset = (last[0] - last[1]) if last else 0
+        j, _ = nearest(a.reference, a.other, i, offset, a.window, len(other), excludes)
         names = load_names(a.names)
         r = masked(read_frame(a.reference, i), excludes)
         o = masked(read_frame(a.other, j), excludes)
@@ -219,6 +245,22 @@ def main():
             print(f"  ... {len(diffs) - a.max_diffs} more")
         detail = {"reference_frame": i, "other_frame": j, "bytes_differing": len(diffs),
                   "first": [{"address": f"{BASE + k:06X}", "ref": r[k], "other": o[k]} for k in diffs[:a.max_diffs]]}
+        # after it: whether the runs stay a few bytes apart (a frame counter, a lag frame) or part for good
+        print(f"\nafter the divergence, the other run's nearest frame (fewest differing bytes, within {a.window} frames):")
+        print("  ref frame  other frame  offset  bytes differing  addresses")
+        later = []
+        step = max(1, a.after // 10)
+        for k in range(i, min(len(ref), i + a.after + 1), step):
+            jk, count = nearest(a.reference, a.other, k, offset, a.window, len(other), excludes)
+            if jk is None:
+                break
+            rk = masked(read_frame(a.reference, k), excludes)
+            ok = masked(read_frame(a.other, jk), excludes)
+            where = [f"{BASE + n:06X}" for n in range(FRAME) if rk[n] != ok[n]][:6]
+            print(f"  {k:9}  {jk:11}  {k - jk:+6}  {count:15}  {' '.join(where)}{' ...' if count > 6 else ''}")
+            later.append({"reference_frame": k, "other_frame": jk, "bytes_differing": count})
+            offset = k - jk
+        detail["after"] = later
 
     if a.json:
         with open(a.json, "w") as f:
