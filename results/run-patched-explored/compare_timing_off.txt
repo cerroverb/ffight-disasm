@@ -1,0 +1,26 @@
+reference frames        6000  (mame_shift_33.bin)
+other frames            6000  (recomp_timing_off.bin)
+excluded work RAM       FF7C00-FF7FFF, FF0118-FF0118
+paired frames           902 of 6000
+first pair              reference 0 = other 0
+offsets (ref - other)   +33 x813, +0 x54, +21 x4, +1 x1, +2 x1
+unpaired, then paired   28  (isolated frames before any lasting divergence)
+lasting divergence      from reference frame 928 (30 or more unpaired in a row)
+
+bytes differing at reference frame 928 against other frame 894: 1
+  address  ref  other  name
+  FF8018   3D   3C    
+
+after the divergence, the other run's nearest frame (fewest differing bytes, within 30 frames):
+  ref frame  other frame  offset  bytes differing  addresses
+        928          894     +34                1  FF8018
+        958          924     +34                1  FF8018
+        988          954     +34                6  FF8018 FF8060 FF8061 FF8062 FF8063 FF819B
+       1018          984     +34                6  FF8018 FF8060 FF8061 FF8062 FF8063 FF819B
+       1048         1014     +34                6  FF8018 FF8060 FF8061 FF8062 FF8063 FF819B
+       1078         1044     +34                3  FF8018 FF8060 FF819B
+       1108         1074     +34                6  FF8018 FF8060 FF8061 FF8062 FF8063 FF819B
+       1138         1104     +34                7  FF8018 FF8060 FF8061 FF8062 FF8063 FF8193 ...
+       1168         1134     +34                3  FF8018 FF8061 FF819B
+       1198         1164     +34                1  FF8018
+       1228         1193     +35                8  FF8018 FF8060 FF8061 FF8062 FF8063 FF8064 ...

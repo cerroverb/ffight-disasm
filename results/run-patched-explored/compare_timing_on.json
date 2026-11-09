@@ -1,0 +1,99 @@
+{
+ "reference_frames": 6000,
+ "other_frames": 6000,
+ "paired": 514,
+ "first_pair": 0,
+ "offsets": {
+  "13": 425,
+  "0": 72,
+  "3": 6,
+  "1": 1,
+  "2": 1
+ },
+ "isolated_unpaired": 9,
+ "lasting_divergence": 464,
+ "detail": {
+  "reference_frame": 464,
+  "other_frame": 452,
+  "bytes_differing": 4,
+  "first": [
+   {
+    "address": "FF8018",
+    "ref": 109,
+    "other": 110
+   },
+   {
+    "address": "FF801F",
+    "ref": 32,
+    "other": 48
+   },
+   {
+    "address": "FF81A2",
+    "ref": 255,
+    "other": 0
+   },
+   {
+    "address": "FF81A3",
+    "ref": 255,
+    "other": 0
+   }
+  ],
+  "after": [
+   {
+    "reference_frame": 464,
+    "other_frame": 452,
+    "bytes_differing": 4
+   },
+   {
+    "reference_frame": 494,
+    "other_frame": 482,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 524,
+    "other_frame": 512,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 554,
+    "other_frame": 542,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 584,
+    "other_frame": 572,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 614,
+    "other_frame": 602,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 644,
+    "other_frame": 632,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 674,
+    "other_frame": 662,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 704,
+    "other_frame": 692,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 734,
+    "other_frame": 722,
+    "bytes_differing": 1
+   },
+   {
+    "reference_frame": 764,
+    "other_frame": 751,
+    "bytes_differing": 0
+   }
+  ]
+ }
+}
