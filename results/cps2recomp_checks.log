@@ -1,0 +1,30 @@
+### explore (patched)
+recomp: 11 entries -> 92482 instructions (360448 bytes) in 22660 blocks, 7346 routines, 63 files; 23 left to the interpreter (18 of them not instructions: data a guess took for code)
+        of those, 89128 instructions from 1223 guessed entries
+recompz80: 2 entries -> 1332 instructions (2726 bytes) in 165 blocks, 16 routines; 0 left to the interpreter
+entries.txt.z80: 0 -> 408
+entries.txt: 0 -> 618
+recomp: 629 entries -> 105081 instructions (409948 bytes) in 25900 blocks, 8101 routines, 71 files; 36 left to the interpreter (29 of them not instructions: data a guess took for code)
+        of those, 79846 instructions from 1064 guessed entries
+recompz80: 410 entries -> 2117 instructions (4424 bytes) in 592 blocks, 61 routines; 0 left to the interpreter
+entries.txt.z80: 408 -> 412
+entries.txt: 618 -> 643
+recomp: 654 entries -> 105383 instructions (411030 bytes) in 25960 blocks, 8122 routines, 71 files; 36 left to the interpreter (29 of them not instructions: data a guess took for code)
+        of those, 79420 instructions from 1096 guessed entries
+recompz80: 414 entries -> 2153 instructions (4513 bytes) in 599 blocks, 64 routines; 0 left to the interpreter
+entries.txt.z80: 412 -> 412
+entries.txt: 643 -> 651
+entries.txt.z80: 412 -> 412
+entries.txt: 651 -> 660
+recomp: 671 entries -> 105612 instructions (411904 bytes) in 25992 blocks, 8135 routines, 71 files; 36 left to the interpreter (29 of them not instructions: data a guess took for code)
+        of those, 73031 instructions from 1086 guessed entries
+recompz80: 414 entries -> 2153 instructions (4513 bytes) in 599 blocks, 64 routines; 0 left to the interpreter
+### check patched
+ok: translated code does what the interpreter does (20000 frames)
+ok: two runs alike (20000 frames)
+[6/6] Linking CXX executable avsp
+### check unpatched
+ok: translated code does what the interpreter does (20000 frames)
+ok: two runs alike (20000 frames)
+ 4 files changed, 18 insertions(+), 11 deletions(-)
+[6/6] Linking CXX executable avsp

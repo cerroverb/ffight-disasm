@@ -1,0 +1,2 @@
+arcade timing off  boot shift +33  paired 902 of 6000  lasting divergence from MAME frame 928
+arcade timing on   boot shift +13  paired 514 of 6000  lasting divergence from MAME frame 464

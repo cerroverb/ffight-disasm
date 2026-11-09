@@ -1,0 +1,6 @@
+MAME 0.264                   frame 2450: credits P1/shared=00 P2=00 P3=00 1C5=01 1C6=01 in play P1=00 P2=00 P3=00 mode=000C
+cps2recomp d3bf22f           frame 2450: credits P1/shared=00 P2=00 P3=01 1C5=00 1C6=00 in play P1=00 P2=00 P3=00 mode=0004
+cps2recomp + patch           frame 2450: credits P1/shared=00 P2=00 P3=00 1C5=01 1C6=01 in play P1=00 P2=00 P3=00 mode=000C
+MAME 0.264                   frame 2700: credits P1/shared=00 P2=00 P3=00 1C5=01 1C6=01 in play P1=00 P2=00 P3=00 mode=000C
+cps2recomp d3bf22f           frame 2700: credits P1/shared=00 P2=00 P3=00 1C5=00 1C6=00 in play P1=00 P2=00 P3=00 mode=0002
+cps2recomp + patch           frame 2700: credits P1/shared=00 P2=00 P3=00 1C5=01 1C6=01 in play P1=00 P2=00 P3=00 mode=000C
