@@ -8,3 +8,4 @@ build/
 src/
 __pycache__/
 handoff/
+avsp-compare-out/
