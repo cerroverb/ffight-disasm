@@ -45,7 +45,8 @@ tr_dir = os.path.join(ROOT, "traces")
 if os.path.isdir(tr_dir):
     for fn in sorted(os.listdir(tr_dir)):
         if fn.endswith(".txt"):
-            entries |= {int(x, 16) for x in open(os.path.join(tr_dir, fn)) if x.strip()}
+            # a run still going rewrites its file now and then: skip a cut last line
+            entries |= {int(x, 16) for x in open(os.path.join(tr_dir, fn)) if re.fullmatch(r"[0-9a-fA-F]{6}\n", x)}
 
 owner = [None] * SIZE         # address of instruction covering each byte
 ins_at = {}
@@ -204,6 +205,8 @@ for i, v in vectors.items():
     if i >= 1 and v in ins_at:
         want_label(v)
 for table, targets in jump_tables.items():
+    if not targets:
+        continue        # no plausible entry: the bytes stay data
     want_label(table)
     for t in targets:
         want_label(t)
@@ -263,9 +266,9 @@ def emit(check):
         if a in labels and not (a in ins_at):
             flush()
             out.append(f"{labels[a]}:")
-        if a in jump_tables and a in labels:
+        if jump_tables.get(a) and a in labels and a not in ins_at:
+            # an empty table would not advance a; the label was written just above
             flush()
-            out.append(f"{labels[a]}:")
             for t in jump_tables[a]:
                 out.append(f"\t.short\t{labels[t]}-{labels[a]}")
             a += 2 * len(jump_tables[a])
@@ -335,6 +338,8 @@ with tempfile.TemporaryDirectory() as td:
         if not new_fb and p.returncode == 0:
             break
         fallback |= new_fb
+    else:
+        sys.exit("round-trip check did not converge in 10 passes:\n" + p.stderr[:3000])
 
 os.makedirs(os.path.dirname(fb_path), exist_ok=True)
 with open(fb_path, "w") as f:
