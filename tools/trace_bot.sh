@@ -10,7 +10,7 @@ W=build/mame/run_$N; mkdir -p $W build/mame/inp traces
 printf 'trace %s/trace.fifo,maincpu,noloop\ngo\n' "$W" > $W/trace.cmd
 [ -p $W/trace.fifo ] || mkfifo $W/trace.fifo
 build/collect_pcs $W/trace.fifo traces/$N.txt > $W/collect.log &
-BOT_CHAR=$C BOT_SNAP=120 QT_QPA_PLATFORM=offscreen "$MAME" ffight -rompath rom -debug -debugger qt \
+BOT_CHAR=$C BOT_SNAP=120 SDL_VIDEODRIVER=offscreen QT_QPA_PLATFORM=offscreen "$MAME" ffight -rompath rom -debug -debugger qt \
   -debugscript $W/trace.cmd -autoboot_script bot/bot.lua -video none -sound none -nothrottle -skip_gameinfo \
   -seconds_to_run $T -record $N.inp -input_directory build/mame/inp -snapshot_directory $W/snap \
   -cfg_directory $W/cfg -nvram_directory $W/nvram > $W/mame.log 2>&1
