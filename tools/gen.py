@@ -53,6 +53,9 @@ ins_at = {}
 bad_paths = []
 jump_tables = {}              # table address -> targets
 ptr_tables = {}               # table address -> targets (32-bit absolute entries)
+task_sites = {}               # address of `movea.l #X,a0` -> X, a routine handed to task_start
+TASK_START = 0x000826         # trap 0 wrapper: d0 = slot, a0 = routine
+TASK_LOAD = re.compile(r"movea\.l\t#0x([0-9a-f]+),a0$")
 seen = set()
 
 
@@ -174,15 +177,42 @@ def new_jump_tables(bounds):
     return found
 
 
+def new_task_routines():
+    """Routines started as tasks: `movea.l #X,a0` followed within 3 instructions by a
+    call to task_start, with no other write to a0 in between."""
+    found = []
+    for a, ins in sorted(ins_at.items()):
+        m = TASK_LOAD.match(ins.text)
+        if not m or a in task_sites:
+            continue
+        x = int(m.group(1), 16)
+        if x >= SIZE or x < 0x400 or x & 1:
+            continue
+        b = a + ins.length
+        for _ in range(3):
+            nxt = ins_at.get(b)
+            if nxt is None:
+                break
+            if TASK_START in nxt.targets:
+                if plausible_code(x):
+                    task_sites[a] = x
+                    found.append(x)
+                break
+            if nxt.text.endswith(",a0") or nxt.flow in ("stop", "jump", "call"):
+                break
+            b += nxt.length
+    return found
+
+
 def discover_all(bounds):
     """Full discovery from scratch. bounds: addresses known to be referenced from an
     earlier pass, so that a jump table processed before the code after it is found
     does not read into that code."""
     owner[:] = [None] * SIZE
-    ins_at.clear(); bad_paths.clear(); jump_tables.clear(); ptr_tables.clear(); seen.clear()
+    ins_at.clear(); bad_paths.clear(); jump_tables.clear(); ptr_tables.clear(); task_sites.clear(); seen.clear()
     discover(sorted(entries))
     while True:
-        targets = new_jump_tables(bounds)
+        targets = new_jump_tables(bounds) + new_task_routines()
         if not targets:
             break
         discover(targets)
@@ -190,6 +220,7 @@ def discover_all(bounds):
     refs |= {t for ins in ins_at.values() for t in ins.targets}
     refs |= {t for targets in jump_tables.values() for t in targets}
     refs |= {t for targets in ptr_tables.values() for t in targets}
+    refs |= set(task_sites.values())
     return refs
 
 
@@ -277,7 +308,12 @@ def resolve(text, ins):
     return text
 
 
+for x in task_sites.values():
+    want_label(x)
 texts = {a: resolve(i.text, i) for a, i in sorted(ins_at.items())}
+for a, x in task_sites.items():
+    if x in labels:
+        texts[a] = texts[a].replace(f"#0x{x:x},a0", f"#{labels[x]},a0")
 # labels may have been created after some text resolution; second pass is not
 # needed because want_label only adds names, never changes existing text.
 
@@ -396,7 +432,7 @@ open(OUT, "w").write(emit(check=False))
 
 code_bytes = sum(i.length for i in ins_at.values())
 print(f"instructions: {len(ins_at)}  code bytes: {code_bytes} ({100 * code_bytes / SIZE:.1f}% of 1 MiB)")
-print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}  jump tables: {len(jump_tables)}  pointer tables: {len(ptr_tables)}")
+print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}  jump tables: {len(jump_tables)}  pointer tables: {len(ptr_tables)}  task routines: {len(set(task_sites.values()))}")
 print(f"paths stopped at invalid/overlapping code: {len(bad_paths)}  unlabelable refs: {len(absolute_refs)}")
 with open(os.path.join(ROOT, "build", "jump_tables.txt"), "w") as f:
     for t, targets in sorted(jump_tables.items()):
