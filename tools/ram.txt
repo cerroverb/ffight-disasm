@@ -10,6 +10,9 @@ ff801c ram_sound_queue_read    # (0x1c,a5): index of the next command sound_send
 ff804c ram_credits             # (0x4c,a5): word, the coin routine adds one and stops at 9
 ff805c ram_p1_input            # (0x5c,a5): IN1 low byte (player 1 in MAME cps1.cpp cps1_3b), inverted; 0x5d the frame before
 ff805e ram_p2_input            # (0x5e,a5): IN1 high byte, inverted; 0x5f the frame before
+ff8064 ram_dsw_b               # (0x64,a5): DSWB inverted, copied by read_system_inputs (difficulty, bonus life)
+ff8065 ram_dsw_a               # (0x65,a5): DSWA inverted (coinage, 2 coins to start)
+ff8067 ram_dsw_c               # (0x67,a5): DSWC inverted (lives bits 0-1, free play bit 2; MAME cps1.cpp ffight ports)
 ff807e ram_free_play           # (0x7e,a5): free play DIP, decoded once at start-up (loc_000D46)
 ff8085 ram_lives_dip           # (0x85,a5): lives a credit, from the DIP table at dat_000E3E
 ff8089 ram_continue_dip        # (0x89,a5): continue allowed, decoded at start-up
