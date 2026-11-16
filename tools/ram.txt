@@ -8,7 +8,7 @@ ff8014 ram_vblank_count        # (0x14,a5): irq2_vblank adds one; loc_002ADA loa
 ff801a ram_sound_queue_write   # (0x1a,a5): index the next queued command goes to; sound_send_queued sends until the read index reaches it
 ff801c ram_sound_queue_read    # (0x1c,a5): index of the next command sound_send_queued sends
 ff804c ram_credits             # (0x4c,a5): word, the coin routine adds one and stops at 9
-ff805c ram_p1_input            # (0x5c,a5): IN1 low byte, inverted (read_player_inputs); 0x5d the frame before
+ff805c ram_p1_input            # (0x5c,a5): IN1 low byte (player 1 in MAME cps1.cpp cps1_3b), inverted; 0x5d the frame before
 ff805e ram_p2_input            # (0x5e,a5): IN1 high byte, inverted; 0x5f the frame before
 ff807e ram_free_play           # (0x7e,a5): free play DIP, decoded once at start-up (loc_000D46)
 ff8085 ram_lives_dip           # (0x85,a5): lives a credit, from the DIP table at dat_000E3E
