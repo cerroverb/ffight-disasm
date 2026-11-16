@@ -1,7 +1,18 @@
-# Work RAM variables (0xff0000-0xffffff): ADDRESS NAME. Used for absolute long operands only.
-# Most RAM access goes through a5 = 0xffff8000 with a 16-bit displacement and is not renamed.
+# Work RAM variables (0xff0000-0xffffff): ADDRESS NAME. Used for absolute long operands and, in game code, for
+# (d16,a5) operands (a5 = 0xffff8000, so ADDRESS = 0xff8000 + d16).
 ff167e ram_exception_code      # set by the exception vector handlers (0xff bus error ... 0x500 trapv)
+ff12a4 ram_demo_input_ptr       # (-0x6d5c,a5): pointer into the attract demo's recorded input list
 ff1514 ram_select_screen       # 1 while the character select screen is up (found by RAM diff, bot/dump_select.lua)
 ff1525 ram_select_cursor       # 0 Guy, 2 Cody, 4 Haggar
+ff8014 ram_vblank_count        # (0x14,a5): irq2_vblank adds one; loc_002ADA loads it from a table
+ff801a ram_sound_queue_write   # (0x1a,a5): index the next queued command goes to; sound_send_queued sends until the read index reaches it
+ff801c ram_sound_queue_read    # (0x1c,a5): index of the next command sound_send_queued sends
+ff804c ram_credits             # (0x4c,a5): word, the coin routine adds one and stops at 9
+ff805c ram_p1_input            # (0x5c,a5): IN1 low byte, inverted (read_player_inputs); 0x5d the frame before
+ff805e ram_p2_input            # (0x5e,a5): IN1 high byte, inverted; 0x5f the frame before
+ff807e ram_free_play           # (0x7e,a5): free play DIP, decoded once at start-up (loc_000D46)
+ff8085 ram_lives_dip           # (0x85,a5): lives a credit, from the DIP table at dat_000E3E
+ff8089 ram_continue_dip        # (0x89,a5): continue allowed, decoded at start-up
+ff8184 ram_sound_queue         # (0x184,a5): sound command words, indexed by ram_sound_queue_read and _write
 ff8568 ram_player1_obj         # 0xc0 byte object slots: players and enemies (mame-rr beatemup-hitboxes.lua)
 ff9528 ram_boss_obj
