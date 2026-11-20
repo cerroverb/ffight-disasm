@@ -12,10 +12,10 @@ usage: gen.py ROM OUT.s [--check-only]
 import os, re, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dis68k import decode
+from genlib import ROOT, read_addresses, read_table, read_traces, discover as descend, roundtrip
 
 CROSS = os.environ.get("CROSS", "m68k-linux-gnu-")
 AS = [CROSS + "as", "-m68000", "--register-prefix-optional"]
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 rom = open(sys.argv[1], "rb").read()
 OUT = sys.argv[2]
@@ -34,19 +34,9 @@ for i in range(256):
     vectors[i] = v
     if i >= 1 and v < SIZE and not v & 1 and v >= 0x400:
         entries.add(v)
-ep_file = os.path.join(ROOT, "tools", "entry_points.txt")
-if os.path.exists(ep_file):
-    for line in open(ep_file):
-        line = line.split("#")[0].strip()
-        if line:
-            entries.add(int(line, 16))
+entries |= read_addresses("entry_points.txt")
 
-tr_dir = os.path.join(ROOT, "traces")
-if os.path.isdir(tr_dir):
-    for fn in sorted(os.listdir(tr_dir)):
-        if fn.endswith(".txt"):
-            # a run still going rewrites its file now and then: skip a cut last line
-            entries |= {int(x, 16) for x in open(os.path.join(tr_dir, fn)) if re.fullmatch(r"[0-9a-fA-F]{6}\n", x)}
+entries |= read_traces("", 6)
 
 owner = [None] * SIZE         # address of instruction covering each byte
 ins_at = {}
@@ -99,29 +89,7 @@ seen = set()
 
 def discover(work):
     """Recursive descent from the given addresses."""
-    while work:
-        a = work.pop()
-        while True:
-            if a in seen or a >= SIZE or a & 1:
-                break
-            if owner[a] is not None:
-                if owner[a] != a:
-                    bad_paths.append(a)
-                break
-            ins = decode(rom, a)
-            if ins is None or any(owner[b] is not None for b in range(a, a + ins.length)):
-                bad_paths.append(a)
-                break
-            seen.add(a)
-            ins_at[a] = ins
-            for b in range(a, a + ins.length):
-                owner[b] = a
-            for t in ins.targets:
-                if t < SIZE and not t & 1:
-                    work.append(t)
-            if ins.flow in ("stop", "jump"):
-                break
-            a += ins.length
+    descend(rom, decode, work, 2, owner, ins_at, seen, bad_paths)
 
 
 def new_jump_tables(bounds):
@@ -170,18 +138,6 @@ for _ in range(10):
 
 # ---------------------------------------------------------------- labels
 labels = {}
-
-
-def read_table(name):
-    """ADDRESS NAME lines from tools/NAME, '#' starts a comment."""
-    path = os.path.join(ROOT, "tools", name)
-    table = {}
-    if os.path.exists(path):
-        for line in open(path):
-            parts = line.split("#")[0].split()
-            if len(parts) >= 2:
-                table[int(parts[0], 16)] = parts[1]
-    return table
 
 
 for addr, name in read_table("names.txt").items():
@@ -310,36 +266,10 @@ def section_bytes(o, tmpdir):
 
 
 with tempfile.TemporaryDirectory() as td:
-    for it in range(10):
-        src = emit(check=True)
+    def build(src):
         p, o = assemble(src, td)
-        lines = src.split("\n")
-        new_fb = set()
-        if p.returncode != 0:
-            for m in re.finditer(r":(\d+): Error", p.stderr):
-                ln = int(m.group(1)) - 1
-                # find the instruction address from the nearest preceding .org
-                for k in range(ln, -1, -1):
-                    mm = re.match(r"\t\.org\t0x([0-9a-f]+)", lines[k])
-                    if mm:
-                        new_fb.add(int(mm.group(1), 16))
-                        break
-            if not new_fb:
-                sys.exit("assembler failed:\n" + p.stderr[:3000])
-        else:
-            built = section_bytes(o, td)
-            for a, ins in ins_at.items():
-                if a in fallback:
-                    continue
-                if built[a:a + ins.length] != rom[a:a + ins.length]:
-                    new_fb.add(a)
-        new_fb -= fallback
-        print(f"check pass {it}: {len(new_fb)} instructions need raw fallback")
-        if not new_fb and p.returncode == 0:
-            break
-        fallback |= new_fb
-    else:
-        sys.exit("round-trip check did not converge in 10 passes:\n" + p.stderr[:3000])
+        return p, (section_bytes(o, td) if p.returncode == 0 else None)
+    roundtrip(emit, build, rom, ins_at, fallback)
 
 os.makedirs(os.path.dirname(fb_path), exist_ok=True)
 with open(fb_path, "w") as f:

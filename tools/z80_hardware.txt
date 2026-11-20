@@ -1,0 +1,9 @@
+# CPS1 Z80 sound CPU hardware addresses: ADDRESS NAME. tools/genz80.py emits them as .equ
+# and uses them for (nn) memory operands. From MAME src/mame/capcom/cps1.cpp (sub_map).
+f000 YM2151_ADDRESS           # ym2151_device offset 0: register select
+f001 YM2151_DATA              # ym2151_device offset 1: register data
+f002 OKI6295                  # okim6295_device read/write
+f004 SOUND_BANK               # cps1_snd_bankswitch_w: bit 0 selects the 0x8000-0xbfff bank
+f006 OKI_PIN7                 # cps1_oki_pin7_w: bit 0 drives OKI6295 pin 7
+f008 SOUNDLATCH               # sound command from the 68000
+f00a SOUNDLATCH2              # "Sound timer fade" from the 68000
