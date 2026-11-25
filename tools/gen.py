@@ -41,7 +41,8 @@ entries |= read_traces("", 6)
 owner = [None] * SIZE         # address of instruction covering each byte
 ins_at = {}
 bad_paths = []
-jump_tables = {}              # table address -> targets
+jump_tables = {}              # table address -> targets (word offsets from the table)
+pointer_tables = {}           # table address -> targets (absolute longs)
 seen = set()
 
 
@@ -81,6 +82,27 @@ def jump_table_targets(table, referenced):
     return targets
 
 
+def pointer_table_targets(table, referenced):
+    """Absolute long code addresses, as in `movea.l (T,pc,dN.w),aM; jmp (aM)`.
+    The table ends at the next address referenced by any known instruction or
+    table, at a target inside the table, or at the first entry that is not
+    plausible code."""
+    targets = []
+    end = min([SIZE] + [r for r in referenced if r > table])
+    a = table
+    while a + 4 <= end and len(targets) < 256:
+        t = int.from_bytes(rom[a:a + 4], "big")
+        if t & 1 or t >= SIZE or not plausible_code(t):
+            break
+        targets.append(t)
+        if t > table:
+            end = min(end, t)
+        a += 4
+    pointer_tables[table] = targets
+    return targets
+
+
+PT_LOAD = re.compile(r"movea\.l\t\(PCREL_([0-9A-F]{6}),pc,d[0-7]\.w\),(a[0-6])$")
 JT_INDEX = re.compile(r"(jmp|jsr)\t\(PCREL_([0-9A-F]{6}),pc,(d[0-7])\.w\)$")
 JT_LOAD = re.compile(r"move\.w\t\(PCREL_([0-9A-F]{6}),pc,(d[0-7])\.w\),(d[0-7])$")
 
@@ -108,6 +130,15 @@ def new_jump_tables(bounds):
             targets = jump_table_targets(int(m.group(2), 16), referenced)
             referenced |= set(targets)
             found += targets
+    for a, ins in sorted(ins_at.items()):
+        m = PT_LOAD.match(ins.text)
+        nxt = ins_at.get(a + ins.length)
+        if not m or not nxt or int(m.group(1), 16) in pointer_tables:
+            continue
+        if nxt.text in (f"jmp\t({m.group(2)})", f"jsr\t({m.group(2)})"):
+            targets = pointer_table_targets(int(m.group(1), 16), referenced)
+            referenced |= set(targets)
+            found += targets
     return found
 
 
@@ -116,7 +147,7 @@ def discover_all(bounds):
     earlier pass, so that a jump table processed before the code after it is found
     does not read into that code."""
     owner[:] = [None] * SIZE
-    ins_at.clear(); bad_paths.clear(); jump_tables.clear(); seen.clear()
+    ins_at.clear(); bad_paths.clear(); jump_tables.clear(); pointer_tables.clear(); seen.clear()
     discover(sorted(entries))
     while True:
         targets = new_jump_tables(bounds)
@@ -126,6 +157,7 @@ def discover_all(bounds):
     refs = {addr for ins in ins_at.values() for kind, addr in ins.refs if addr < SIZE}
     refs |= {t for ins in ins_at.values() for t in ins.targets}
     refs |= {t for targets in jump_tables.values() for t in targets}
+    refs |= {t for targets in pointer_tables.values() for t in targets}
     return refs
 
 
@@ -166,6 +198,13 @@ for table, targets in jump_tables.items():
     want_label(table)
     for t in targets:
         want_label(t)
+for table, targets in pointer_tables.items():
+    if any(owner[b] is not None for b in range(table, table + 4 * len(targets))):
+        targets.clear()     # bytes already decoded as code: stay as they are
+    if targets:
+        want_label(table)
+        for t in targets:
+            want_label(t)
 
 absolute_refs = []   # placeholders that could not become labels
 
@@ -229,6 +268,12 @@ def emit(check):
                 out.append(f"\t.short\t{labels[t]}-{labels[a]}")
             a += 2 * len(jump_tables[a])
             continue
+        if pointer_tables.get(a) and a in labels and a not in ins_at:
+            flush()
+            for t in pointer_tables[a]:
+                out.append(f"\t.long\t{labels.get(t) or f'0x{t:x}'}")
+            a += 4 * len(pointer_tables[a])
+            continue
         if a in ins_at:
             flush()
             ins = ins_at[a]
@@ -280,11 +325,14 @@ open(OUT, "w").write(emit(check=False))
 
 code_bytes = sum(i.length for i in ins_at.values())
 print(f"instructions: {len(ins_at)}  code bytes: {code_bytes} ({100 * code_bytes / SIZE:.1f}% of 1 MiB)")
-print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}  jump tables: {len(jump_tables)}")
+print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}  jump tables: {len(jump_tables)}  "
+      f"pointer tables: {sum(1 for t in pointer_tables.values() if t)}")
 print(f"paths stopped at invalid/overlapping code: {len(bad_paths)}  unlabelable refs: {len(absolute_refs)}")
 with open(os.path.join(ROOT, "build", "jump_tables.txt"), "w") as f:
     for t, targets in sorted(jump_tables.items()):
         f.write(f"{t:06x} {len(targets)} entries: " + " ".join(f"{x:06x}" for x in targets) + "\n")
+    for t, targets in sorted(pointer_tables.items()):
+        f.write(f"{t:06x} {len(targets)} long entries: " + " ".join(f"{x:06x}" for x in targets) + "\n")
 with open(os.path.join(ROOT, "build", "bad_paths.txt"), "w") as f:
     for a in sorted(set(bad_paths)):
         f.write(f"{a:06x}\n")

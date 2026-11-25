@@ -8,6 +8,8 @@ Goal (User, 2026-11-20): a native Linux Wayland port of Final Fight built from a
 
 - 2026-11-25: sound command sweep finished, 1247 Z80 PCs in `traces/z80/sound_cmds.txt`, all already found by static discovery. `make verify` passes for all six chips, 8 of 8 mutations caught.
 
+- 2026-11-25: gen.py follows long pointer tables (`movea.l (T,pc,dN.w),aM` then `jmp`/`jsr (aM)`): 29 tables, 44945 to 52932 instructions, 16.0% to 19.0% of the 68000 ROM. Verify and 8 of 8 mutations pass.
+
 ## Failed
 - `BOT_CHAR` must be numeric (0 Guy, 1 Cody, 2 Haggar); a run with `guy` stopped the bot.
 

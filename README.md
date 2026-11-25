@@ -4,7 +4,7 @@ This repository contains no ROM data and no Capcom code. The disassembly source 
 
 Status
 - the generated source rebuilds all five 68000 program ROM chips byte-identically (checked by SHA-1)
-- code is found by recursive descent from the vector table, from MAME execution traces (attract mode and bot gameplay runs in `traces/`), from `tools/entry_points.txt` and through jump tables of the form `move.w (T,pc,d0.w),d0; jmp (T,pc,d0.w)` (a table ends at its lowest target or at the next referenced address)
+- code is found by recursive descent from the vector table, from MAME execution traces (attract mode and bot gameplay runs in `traces/`), from `tools/entry_points.txt` and through jump tables of the form `move.w (T,pc,d0.w),d0; jmp (T,pc,d0.w)` (a table ends at its lowest target or at the next referenced address) and pointer tables of the form `movea.l (T,pc,d0.w),a0; jmp (a0)` (absolute longs; a table ends at the next referenced address, at a target inside it or at an entry that is not plausible code)
 - the generated Z80 source rebuilds the sound program chip `ff_09.12b` byte-identically (checked by SHA-1). Code is found by recursive descent from the reset and IM 1 addresses, from MAME Z80 traces in `traces/z80/` and through the inline jump tables that follow `call 0x0021`. The bank area (chip 0x8000-0xffff) is 0xff filled in this set
 - names and comments are mostly not started
 
