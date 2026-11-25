@@ -43,6 +43,7 @@ ins_at = {}
 bad_paths = []
 jump_tables = {}              # table address -> targets (word offsets from the table)
 pointer_tables = {}           # table address -> targets (absolute longs)
+task_routines = {}            # address of a movea.l #X,a0 -> X, a routine passed to task_start
 seen = set()
 
 
@@ -102,6 +103,37 @@ def pointer_table_targets(table, referenced):
     return targets
 
 
+# task_start (0x000826, trap 0) stores a0 as the task's resume address at slot
+# offset 4; the scheduler resumes a task with movea.l (0x4,a0),a1 ... jmp (a1).
+TASK_START = 0x000826
+TASK_LOAD = re.compile(r"movea\.l\t#0x([0-9a-f]+),a0$")
+
+
+def new_task_routines():
+    """X from `movea.l #X,a0` followed by a call or jump to task_start before
+    anything else changes a0 or the flow."""
+    found = []
+    for a, ins in sorted(ins_at.items()):
+        m = TASK_LOAD.match(ins.text)
+        if not m or a in task_routines:
+            continue
+        b = a + ins.length
+        for _ in range(4):
+            nxt = ins_at.get(b)
+            if nxt is None:
+                break
+            if TASK_START in nxt.targets and nxt.flow in ("call", "jump"):
+                t = int(m.group(1), 16)
+                if t < SIZE and not t & 1:
+                    task_routines[a] = t
+                    found.append(t)
+                break
+            if nxt.flow != "next" or nxt.text.endswith(",a0"):
+                break
+            b += nxt.length
+    return found
+
+
 PT_LOAD = re.compile(r"movea\.l\t\(PCREL_([0-9A-F]{6}),pc,d[0-7]\.w\),(a[0-6])$")
 JT_INDEX = re.compile(r"(jmp|jsr)\t\(PCREL_([0-9A-F]{6}),pc,(d[0-7])\.w\)$")
 JT_LOAD = re.compile(r"move\.w\t\(PCREL_([0-9A-F]{6}),pc,(d[0-7])\.w\),(d[0-7])$")
@@ -148,9 +180,10 @@ def discover_all(bounds):
     does not read into that code."""
     owner[:] = [None] * SIZE
     ins_at.clear(); bad_paths.clear(); jump_tables.clear(); pointer_tables.clear(); seen.clear()
+    task_routines.clear()
     discover(sorted(entries))
     while True:
-        targets = new_jump_tables(bounds)
+        targets = new_jump_tables(bounds) + new_task_routines()
         if not targets:
             break
         discover(targets)
@@ -158,6 +191,7 @@ def discover_all(bounds):
     refs |= {t for ins in ins_at.values() for t in ins.targets}
     refs |= {t for targets in jump_tables.values() for t in targets}
     refs |= {t for targets in pointer_tables.values() for t in targets}
+    refs |= set(task_routines.values())
     return refs
 
 
@@ -218,6 +252,11 @@ def resolve(text, ins):
             return f"0x{addr:x}"
         return lab
     text = re.sub(r"(CODE|PCREL)_([0-9A-F]{6})", sub, text)
+    if ins.pc in task_routines:
+        t = task_routines[ins.pc]
+        lab = want_label(t)
+        if lab:
+            text = text.replace(f"#0x{t:x},a0", f"#{lab},a0", 1)
     for kind, addr in ins.refs:
         if kind == "absl" and addr < SIZE:
             lab = want_label(addr)
@@ -326,7 +365,7 @@ open(OUT, "w").write(emit(check=False))
 code_bytes = sum(i.length for i in ins_at.values())
 print(f"instructions: {len(ins_at)}  code bytes: {code_bytes} ({100 * code_bytes / SIZE:.1f}% of 1 MiB)")
 print(f"raw fallback instructions: {len(fallback)}  labels: {len(labels)}  jump tables: {len(jump_tables)}  "
-      f"pointer tables: {sum(1 for t in pointer_tables.values() if t)}")
+      f"pointer tables: {sum(1 for t in pointer_tables.values() if t)}  task routines: {len(set(task_routines.values()))}")
 print(f"paths stopped at invalid/overlapping code: {len(bad_paths)}  unlabelable refs: {len(absolute_refs)}")
 with open(os.path.join(ROOT, "build", "jump_tables.txt"), "w") as f:
     for t, targets in sorted(jump_tables.items()):

@@ -10,6 +10,8 @@ Goal (User, 2026-11-20): a native Linux Wayland port of Final Fight built from a
 
 - 2026-11-25: gen.py follows long pointer tables (`movea.l (T,pc,dN.w),aM` then `jmp`/`jsr (aM)`): 29 tables, 44945 to 52932 instructions, 16.0% to 19.0% of the 68000 ROM. Verify and 8 of 8 mutations pass.
 
+- 2026-11-25: self test return addresses 0x05E98E and 0x05EA92 (jmp (a5) from post_print_message) added as entry points. gen.py follows task routines passed to task_start (`movea.l #X,a0`; trap 0 stores a0 at slot offset 4, the scheduler resumes with jmp (a1) from offset 4): 18 routines, operands now labels. 57038 instructions, 20.5%. Verify and 8 of 8 mutations pass.
+
 ## Failed
 - `BOT_CHAR` must be numeric (0 Guy, 1 Cody, 2 Haggar); a run with `guy` stopped the bot.
 
