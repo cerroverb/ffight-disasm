@@ -8,10 +8,10 @@ Status
 - the generated Z80 source rebuilds the sound program chip `ff_09.12b` byte-identically (checked by SHA-1). Code is found by recursive descent from the reset and IM 1 addresses, from MAME Z80 traces in `traces/z80/` and through the inline jump tables that follow `call 0x0021`. The bank area (chip 0x8000-0xffff) is 0xff filled in this set
 - names and comments are mostly not started
 
-Requirements: m68k and Z80 cross binutils, MAME, Python 3, make and gcc. On Ubuntu 24.04:
+Requirements: m68k and Z80 cross binutils, MAME, Python 3, make, gcc and curl. On Ubuntu 24.04:
 
 ```bash
-sudo apt install binutils-m68k-linux-gnu binutils-z80 mame python3 make gcc
+sudo apt install binutils-m68k-linux-gnu binutils-z80 mame python3 make gcc curl
 ```
 
 If your cross binutils use other prefixes, set them, e.g. `export CROSS=m68k-elf-` and `export ZCROSS=z80-elf-`.
@@ -32,7 +32,7 @@ python3 verify/test_disz80.py
 `make verify` must print `OK` for all six chips and `NOT covered by an instruction (FAIL): 0` twice (68000 and Z80). The build (`make`) reads only `src/`, never the ROM.
 
 The checks:
-- `verify/verify_maincpu.py` and `verify/verify_audiocpu.py` compare the SHA-1 of each rebuilt program chip with the values in MAME `cps1.cpp`, `ROM_START( ffight )`, so any byte difference fails
+- `verify/verify_maincpu.py` and `verify/verify_audiocpu.py` compare the SHA-1 of each rebuilt program chip with the values in MAME `cps1.cpp`, `ROM_START( ffight )`, so any byte difference fails. The expected hashes are not stored in this repository: `make verify` downloads `cps1.cpp` from `mamedev/mame` at the commit pinned in the `Makefile` (`MAME_COMMIT`) and `verify/mame_hashes.py` reads them from it. The chip list must equal MAME's region list
 - `verify/check_coverage.py` reads the assembler's own listing and fails if any address executed in a MAME trace is not the start of an assembled instruction, so code cannot be left as `.byte` data or copied in as raw bytes
 - `tools/gen.py` assembles every instruction at its address and compares the bytes. Instructions GNU as re-encodes (e.g. `(0,a0)` becomes `(a0)`) are emitted as raw words with the instruction in a comment and listed in `build/fallback.txt`
 - `verify/mutation_test.sh` makes eight broken copies of the sources and checks that each one fails

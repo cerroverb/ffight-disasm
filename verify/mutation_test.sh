@@ -4,7 +4,9 @@
 set -u
 cd "$(dirname "$0")/.."
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+[ -d build/mame_src ] || { echo "build/mame_src missing: run make verify first (it downloads MAME cps1.cpp)"; exit 1; }
 cp -r src Makefile verify traces "$T"/ && mkdir -p "$T/build" "$T/rom"
+cp -r build/mame_src "$T/build/"   # MAME cps1.cpp already downloaded by make verify
 cp rom/maincpu.bin "$T/rom/"
 python3 -I -c 'import sys, zipfile; open(sys.argv[2], "wb").write(zipfile.ZipFile(sys.argv[1]).read("ff_09.12b"))' \
   rom/ffight.zip "$T/rom/ff_09.bin"
