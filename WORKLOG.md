@@ -6,6 +6,8 @@ Goal (User, 2026-11-20): a native Linux Wayland port of Final Fight built from a
 - 2026-11-20: Z80 sound program disassembly. `tools/disz80.py`, `tools/genz80.py`, shared `tools/genlib.py` (gen.py output unchanged, checked with cmp). `src/sound.s` rebuilds ff_09.12b with the MAME SHA-1. Inline jump tables after `call 0x0021` handled. Exhaustive decoder test `verify/test_disz80.py`. Z80 coverage check and three Z80 mutations added.
 - 2026-11-20: `tools/trace_bot.sh` traces the Z80 too (`CPUS`, `SCRIPT`). `bot/sound_cmds.lua` sends all 256 sound commands.
 
+- 2026-11-25: sound command sweep finished, 1247 Z80 PCs in `traces/z80/sound_cmds.txt`, all already found by static discovery. `make verify` passes for all six chips, 8 of 8 mutations caught.
+
 ## Failed
 - `BOT_CHAR` must be numeric (0 Guy, 1 Cody, 2 Haggar); a run with `guy` stopped the bot.
 
