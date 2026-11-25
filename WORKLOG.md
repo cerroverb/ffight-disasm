@@ -15,12 +15,12 @@ Goal (User, 2026-11-20): a native Linux Wayland port of Final Fight built from a
 - 2026-11-25: expected chip SHA-1 values now read from MAME cps1.cpp at pinned commit f09e0805da149cb15bd1cd777fbbcc65640d7866 (`verify/mame_hashes.py`, downloaded by `make verify`), not stored in the repository. Checked: the hashes on main equal the pinned file, the pinned ROM_START( ffight ) block equals an independent master download. User enabled branch protection on main with code owner review.
 - 2026-11-25: the other `movea.l #X,a0` loads (not to task_start) go to routines that read or write through a0 (data pointers, e.g. loc_063D68, loc_00553A, loc_00DE04): no code from that pattern.
 - 2026-11-25: started traced bot run `BOT_SEED=2 tools/trace_bot.sh bot_haggar_3600s_seed2 2 3600` (both CPUs). Background job limit is 2 hours, so it may stop early; the collector keeps partial coverage.
+- 2026-11-25: that run was stopped by the 2 hour job limit. Partial traces committed: 23971 68000 PCs, 1203 Z80 PCs. All covered by existing discovery (instruction count unchanged at 57038; Z80 traced PCs 1247 to 1249, all assembled). `make verify` passes, 8 of 8 mutations caught.
 
 ## Failed
 - `BOT_CHAR` must be numeric (0 Guy, 1 Cody, 2 Haggar); a run with `guy` stopped the bot.
 
 ## Next
-- Commit traces from the running bot run, regenerate, verify.
 - 68000 coverage beyond 20.5%: more gameplay traces (later stages), data tables, names.
 - Z80: only indirect jump is the 0x0021 dispatcher; static discovery covers all 1247 traced PCs.
 - Port: decompile the disassembly to C routine by routine; CPS1 video from MAME cps1_v.cpp; Z80 sound via interpreter, YM2151 via ymfm, OKI6295 from MAME; SDL3 frontend.
